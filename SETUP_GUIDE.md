@@ -1,6 +1,6 @@
 # Setup Guide
 
-This guide covers everything you need to get the Local RAG Agent running from scratch. If you just want the quick version, see the [README](README.md).
+This guide goes into more detail than the README. If you just want the quick version, see the [README](README.md).
 
 ---
 
@@ -32,50 +32,75 @@ cd local-rag-agent
 
 ---
 
-## 3. Run the Setup Script
+## 3. Create a Virtual Environment
 
-Open PowerShell in the project folder. You can do this by navigating to the folder in File Explorer, then right-clicking on an empty area and choosing "Open in Terminal" or "Open PowerShell window here."
+Open a terminal in the project folder and run:
 
-Run these two commands:
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\setup_rag.ps1
+```
+python -m venv venv
 ```
 
-The first command allows scripts to run in this PowerShell window only. It will ask you to confirm, type **Y** and press Enter. This resets when you close the window and does not change anything permanently.
+Then activate it:
 
-The setup script creates a virtual environment, installs all the Python packages, and checks that everything is working. It also downloads the AI model automatically if it is not already in the `models/` folder.
+**PowerShell:** `.\venv\Scripts\Activate.ps1`
 
-**If you prefer Command Prompt over PowerShell**, run `setup_rag.bat` instead. It does the same thing.
+**Command Prompt:** `venv\Scripts\activate.bat`
+
+You should see `(venv)` at the start of your prompt. This means you are working inside the virtual environment, and any packages you install will stay contained in the project folder.
+
+If you get an execution policy error in PowerShell, run this first:
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+This only affects the current window and resets when you close it.
+
+**Troubleshooting:** If `activate.bat` is missing after creating the venv, your Python installation may not include pip. Fix it with:
+```
+python -m ensurepip --upgrade
+python -m venv venv
+```
 
 ---
 
-## 4. Download the AI Model (Manual Method)
+## 4. Install Dependencies
 
-The setup script handles this automatically, but if you need to do it by hand (or want a different model), here is how.
+With the virtual environment activated:
 
-The default model is **Qwen2.5-1.5B-Instruct** in GGUF format. It is about 1.1 GB.
+```
+pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
+```
 
-### Option A: Using the command line
+This installs PyTorch, transformers, sentence-transformers, FAISS, llama-cpp-python, and everything else. PyTorch is around 2 GB so it takes a few minutes.
 
-Activate your virtual environment first, then download:
+---
+
+## 5. Download the AI Model
+
+The model is the only thing not included in the repo because it is 1.1 GB and GitHub has a 100 MB file limit.
+
+### Option A: Run the download script
 
 **PowerShell:**
 ```powershell
-.\venv\Scripts\Activate.ps1
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\download_model.ps1
+```
+
+**Command Prompt:** Run `download_model.bat` (you can just double-click it in File Explorer).
+
+The script downloads the model into the `models/` folder automatically.
+
+### Option B: Download from the command line manually
+
+With your virtual environment activated:
+
+```
 pip install huggingface-hub
 huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir models/
 ```
 
-**Command Prompt:**
-```cmd
-venv\Scripts\activate.bat
-pip install huggingface-hub
-huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir models/
-```
-
-### Option B: Download directly from the browser
+### Option C: Download directly from your browser
 
 1. Go to [huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)
 2. Click on **Files and versions**
@@ -84,9 +109,11 @@ huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF qwen2.5-1.5b-instruct-q
 
 The filename must match exactly. If it downloads with a different name, rename it to `qwen2.5-1.5b-instruct-q4_k_m.gguf`.
 
-### Upgrading to a larger model
+---
 
-If you have extra RAM and want better answers, you can swap in a bigger model. Download one of these and drop it into the `models/` folder:
+## 6. Upgrading to a Larger Model
+
+If you have extra RAM and want better quality answers, you can swap in a bigger model. Download one of these and put it in the `models/` folder:
 
 | Model | File to Download | Size | Link |
 |---|---|---|---|
@@ -101,34 +128,27 @@ GGUF_MODEL_PATH = PROJECT_ROOT.parent / "models" / "qwen2.5-3b-instruct-q4_k_m.g
 
 ---
 
-## 5. Add Your Documents
+## 7. Add Your Documents
 
-Put the files you want to search through into the `data/docs/` folder. The system supports these file types: `.txt`, `.md`, `.pdf`, `.json`, `.yaml`, `.yml`, `.csv`, `.log`, `.cfg`, `.ini`
+Put the files you want to search through into the `data/docs/` folder. Supported file types: `.txt`, `.md`, `.pdf`, `.json`, `.yaml`, `.yml`, `.csv`, `.log`, `.cfg`, `.ini`
 
-Some sample IT documentation is included so you can test right away without adding anything.
+Some sample IT documentation is already included so you can test right away without adding anything.
 
 ---
 
-## 6. Run the Agent
+## 8. Run the Agent
 
 Every time you open a new terminal window, you need to activate the virtual environment first.
 
-**PowerShell:**
-```powershell
-.\venv\Scripts\Activate.ps1
-cd src
-```
+**PowerShell:** `.\venv\Scripts\Activate.ps1`
 
-**Command Prompt:**
-```cmd
-venv\Scripts\activate.bat
-cd src
-```
+**Command Prompt:** `venv\Scripts\activate.bat`
 
-You should see `(venv)` appear at the start of your prompt. Then run:
+You should see `(venv)` at the start of your prompt. Then run:
 
 **Build the search index** (do this once, and again whenever you add or change documents):
 ```
+cd src
 python rag_agent.py ingest
 ```
 
@@ -146,7 +166,7 @@ Type `quit` to exit the chat.
 
 ---
 
-## 7. Adjusting for Your CPU
+## 9. Adjusting for Your CPU
 
 The default settings are tuned for an 8-core processor. If you have a different CPU, open `src/config.py` and change the `N_THREADS` value to match your physical core count. For example, if you have a 6-core CPU:
 
@@ -162,12 +182,12 @@ Using more threads than your physical core count will actually slow things down,
 
 **"python is not recognized"**: Python is not in your PATH. Reinstall it from [python.org](https://www.python.org/downloads/) and check "Add Python to PATH."
 
-**"pip is not recognized"**: You are running commands outside the virtual environment. Activate it first (see Step 6).
+**"pip is not recognized"**: You are running commands outside the virtual environment. Activate it first (see Step 8).
 
-**Red execution policy error in PowerShell**: Run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first, or use the `.bat` script in Command Prompt instead.
+**Red execution policy error in PowerShell**: Run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first, or use Command Prompt instead.
 
 **"No module named X"**: Dependencies did not install into your venv. Activate the venv, then run `pip install -r requirements.txt`.
 
-**"Model file not found"**: The GGUF file is not in the `models/` folder or has the wrong filename. See Step 4.
+**"Model file not found"**: The GGUF file is not in the `models/` folder or has the wrong filename. See Step 5.
 
 **First query takes a while**: Normal. The AI model and embedding engine load into memory on the first query (10 to 20 seconds). After that, queries are fast.
