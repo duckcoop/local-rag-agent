@@ -27,11 +27,13 @@ from config import (
     GENERATION_MODEL, EMBEDDING_MODEL, TEMPERATURE, USE_GGUF,
     FAITHFULNESS_THRESHOLD, MAX_CORRECTION_ROUNDS,
     RETRY_TEMP_BOOST, RETRY_TOPK_BOOST, GGUF_MODEL_PATH,
+    WEB_SEARCH_ENABLED, WEB_SEARCH_MAX_RESULTS,
 )
 from ingest import load_documents, chunk_documents
 from embeddings import EmbeddingEngine
 from vectorstore import VectorStore
 from verifier import Verifier, print_verification_report
+from web_search import WebSearchEngine
 
 
 def load_generator():
@@ -55,6 +57,15 @@ class RAGAgent:
         self.embedder = EmbeddingEngine()
         self.store = VectorStore()
         self.verifier = Verifier(self.embedder)
+
+        # Web search (runs alongside local retrieval)
+        self.web_search = None
+        if WEB_SEARCH_ENABLED:
+            self.web_search = WebSearchEngine(max_results=WEB_SEARCH_MAX_RESULTS)
+            if self.web_search.is_available():
+                print("Web search: enabled (DuckDuckGo)")
+            else:
+                self.web_search = None
 
         self.generator = None
         if load_gen:
@@ -124,13 +135,21 @@ class RAGAgent:
         best_result = None
 
         for attempt in range(1 + MAX_CORRECTION_ROUNDS):
-            # -- Retrieve --
-            results = self.retrieve(question, top_k=current_top_k)
+            # -- Retrieve (local) --
+            local_results = self.retrieve(question, top_k=current_top_k)
             retrieve_time = time.time() - start
+
+            # -- Retrieve (web) --
+            web_results = []
+            if self.web_search:
+                web_results = self.web_search.search(question)
+
+            # -- Merge results (local first, then web) --
+            results = local_results + web_results
 
             if not results:
                 return {
-                    "answer": "I could not find any relevant information in the documentation.",
+                    "answer": "I could not find any relevant information in the documentation or on the web.",
                     "sources": [],
                     "verification": None,
                     "retrieve_time": round(retrieve_time, 3),
@@ -209,10 +228,12 @@ class RAGAgent:
     def interactive(self):
         """Run an interactive query loop."""
         backend = "GGUF/llama-cpp" if USE_GGUF else "HuggingFace"
+        web_status = "enabled (DuckDuckGo)" if self.web_search else "disabled"
         print("-- Interactive Query Mode --")
         print(f"  Embedding: {EMBEDDING_MODEL}")
         print(f"  Generator: {backend}")
         print(f"  Index size: {self.store.size} vectors")
+        print(f"  Web search: {web_status}")
         print(f"  Verification: active (threshold={FAITHFULNESS_THRESHOLD})")
         print(f"  Type 'quit' to exit\n")
 
@@ -227,7 +248,10 @@ class RAGAgent:
                 print("Goodbye!")
                 break
 
-            print("\nSearching documentation...")
+            if self.web_search:
+                print("\nSearching documentation and the web...")
+            else:
+                print("\nSearching documentation...")
             result = self.query(question)
 
             print(f"\n{'=' * 50}")

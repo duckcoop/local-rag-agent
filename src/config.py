@@ -43,22 +43,16 @@ GENERATION_MODEL = "HuggingFaceTB/SmolLM2-360M-Instruct"
 USE_GGUF = True
 
 MAX_NEW_TOKENS = 512
-TEMPERATURE = 0.3
+TEMPERATURE = 0.15
 TOP_P = 0.9
+
+# -- Web Search --
+WEB_SEARCH_ENABLED = True       # set to False to disable web search entirely
+WEB_SEARCH_MAX_RESULTS = 3      # number of web results to fetch per query
 
 # -- Verification Layer --
 FAITHFULNESS_THRESHOLD = 0.8
-CLAIM_SUPPORT_THRESHOLD = 0.35    # lowered for more capable models that paraphrase accurately
+CLAIM_SUPPORT_THRESHOLD = 0.45
 MAX_CORRECTION_ROUNDS = 2
 RETRY_TEMP_BOOST = 0.15
 RETRY_TOPK_BOOST = 2
-
-# -- System Prompt (used by legacy HF generator only) --
-SYSTEM_PROMPT = """You are an IT documentation assistant. Answer questions using ONLY the context provided below. If the context does not contain enough information to answer the question, say so clearly. Do not make up information.
-
-Context:
-{context}
-
-Question: {question}
-
-Answer:"""
